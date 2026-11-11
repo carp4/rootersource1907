@@ -99,6 +99,11 @@ function diagnosticsData(interface, task)
 		return interfaceNumber
 	end
 
+	function getFamily(interface)
+		local uci = require "luci.model.uci".cursor()
+		return uci:get("mwan3", interface, "family") or "ipv4"
+	end
+
 	function diag_command(cmd, device, addr)
 		if addr and addr:match("^[a-zA-Z0-9%-%.:_]+$") then
 			local util = io.popen(cmd %{ut.shellquote(device), ut.shellquote(addr)})
@@ -173,8 +178,14 @@ function diagnosticsData(interface, task)
 			local number = getInterfaceNumber(interface)
 			local iif = 1000 + number
 			local fwmark = 2000 + number
-			local iif_rule  = sys.exec(string.format("ip rule | grep %d", iif))
-			local fwmark_rule = sys.exec(string.format("ip rule | grep %d", fwmark))
+			local iif_rule, fwmark_rule
+			if getFamily(interface) == "ipv6" then
+				iif_rule = sys.exec(string.format("ip -6 rule | grep %d", iif))
+				fwmark_rule = sys.exec(string.format("ip -6 rule | grep %d", fwmark))
+			else
+				iif_rule = sys.exec(string.format("ip rule | grep %d", iif))
+				fwmark_rule = sys.exec(string.format("ip rule | grep %d", fwmark))
+			end
 			if iif_rule ~= "" and fwmark_rule ~= "" then
 				luci.http.write(i18n.translatef("All required IP rules for interface %s found", interface))
 				luci.http.write("\n")
@@ -193,13 +204,22 @@ function diagnosticsData(interface, task)
 			end
 		elseif task == "check_routes" then
 			local number = getInterfaceNumber(interface)
-			local routeTable = sys.exec(string.format("ip route list table %s", number))
+			local routeTable
+			if getFamily(interface) == "ipv6" then
+				routeTable = sys.exec(string.format("ip -6 route list table %s 2>/dev/null", number))
+			else
+				routeTable = sys.exec(string.format("ip route list table %s 2>/dev/null", number))
+			end
 			if routeTable ~= "" then
 				luci.http.write(i18n.translatef("Routing table %s for interface %s found", number, interface))
 				luci.http.write("\n")
 				luci.http.write(routeTable)
 			else
-				luci.http.write(i18n.translatef("Routing table %s for interface %s not found", number, interface))
+				if getFamily(interface) == "ipv6" then
+					luci.http.write(i18n.translatef("IPv6 routing table %s for interface %s not found", number, interface))
+				else
+					luci.http.write(i18n.translatef("Routing table %s for interface %s not found", number, interface))
+				end
 			end
 		elseif task == "hotplug_ifup" then
 			os.execute(string.format("/usr/sbin/mwan3 ifup %s", ut.shellquote(interface)))
