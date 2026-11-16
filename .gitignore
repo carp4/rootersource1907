@@ -13,3 +13,8 @@
 
 # build signing keys (never publish)
 key-build*
+
+# generated luci-base build outputs
+feeds/luci/modules/luci-base/src/contrib/lemon
+feeds/luci/modules/luci-base/src/jsmin
+feeds/luci/modules/luci-base/src/po2lmo
