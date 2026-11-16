@@ -24,8 +24,11 @@ HOST_CONFIGURE_ARGS += \
 	--disable-shared \
 	--enable-elf64
 
+# libelf 0.8.13's configure probes predate C99: they rely on implicit int and
+# implicit function declarations, which GCC 14 rejects.
 define Host/Configure
         (cd $(HOST_BUILD_DIR)/$(3); \
+                CFLAGS="-std=gnu89" \
                 $(HOST_CONFIGURE_CMD) \
                 $(HOST_CONFIGURE_ARGS); \
         )
