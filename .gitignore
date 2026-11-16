@@ -10,3 +10,6 @@
 /tmp
 /.config
 /.config.old
+
+# build signing keys (never publish)
+key-build*
